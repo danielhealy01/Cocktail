@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html ="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drink Cost Calculator</title>
+    <!-- Use Tailwind CSS for a modern, responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="container mx-auto max-w-2xl bg-white p-6 md:p-8 rounded-2xl shadow-xl">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-center text-gray-900 mb-2">Drink Cost Calculator</h1>
+        <p class="text-center text-gray-600 mb-8">
+            Add your ingredients below to automatically calculate the total cost of a new drink.
+        </p>
+
+        <!-- Container for ingredient inputs -->
+        <div id="ingredients-container" class="space-y-4">
+            <!-- Initial ingredient row will be added by JavaScript -->
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex justify-center mt-6">
+            <button id="add-ingredient-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 shadow-md">
+                + Add Ingredient
+            </button>
+        </div>
+
+        <!-- Total Cost Display -->
+        <div class="bg-gray-100 p-6 rounded-xl mt-8 shadow-inner">
+            <h2 class="text-xl font-bold text-gray-800">Total Drink Cost:</h2>
+            <div id="total-cost" class="text-4xl font-extrabold text-green-600 mt-2">£0.00</div>
+        </div>
+
+        <!-- How It Works Section -->
+        <div class="mt-10 p-6 bg-gray-50 rounded-xl">
+            <h3 class="text-lg font-bold text-gray-700 mb-2">How It Works</h3>
+            <p class="text-sm text-gray-500">
+                This tool uses the prices from the photos you provided. All calculations are based on a cost per milliliter (ml).
+                For example, the cost of "Beefeater Gin 70cl" is £13.35, which is £0.0191 per ml (£13.35 / 700ml).
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // Data extracted from the provided images. All costs are normalized to per milliliter (ml).
+        // 70cl = 700ml
+        // 1 bottle = 700ml (for spirits), 750ml (for wine, not applicable here)
+        // 1 case = 24 units unless otherwise specified
+        const INGREDIENT_COSTS = {
+            "Coke 1/2": 0.0018, // £0.0018 per ml (unit price £0.45 / 250ml) assuming 250ml can
+            "Coke Zero 1/2": 0.0018, // £0.0018 per ml (unit price £0.45 / 250ml)
+            "Lemonade 1/2": 0.0018, // £0.0018 per ml (unit price £0.45 / 250ml)
+            "Lemonade Pint": 0.002, // £0.002 per ml (unit price £0.90 / 450ml)
+            "Lime & Soda 1/2": 0.0006, // £0.0006 per ml (unit price £0.15 / 250ml)
+            "Lime & Soda Pint": 0.0007, // £0.0007 per ml (unit price £0.30 / 450ml)
+            "Apple Juice 1/2": 0.004, // £0.004 per ml (unit price £1.00 / 250ml)
+            "Apple Juice Pint": 0.0031, // £0.0031 per ml (unit price £1.40 / 450ml)
+            "Orange Juice 1/2": 0.004, // £0.004 per ml (unit price £1.00 / 250ml)
+            "Orange Juice Pint": 0.0031, // £0.0031 per ml (unit price £1.40 / 450ml)
+            "Cranberry Juice 1/2": 0.004, // £0.004 per ml (unit price £1.00 / 250ml)
+            "Cranberry Juice Pint": 0.0031, // £0.0031 per ml (unit price £1.40 / 450ml)
+            "Grenadine": 0.0082, // £5.75 / 700ml = £0.0082
+            "Aquafaba": 0.0013, // £0.13 per 25ml = £0.0052 per ml (assuming it's a typo for 25ml and should be £0.0052 per ml). Corrected to £0.0052 to match the note.
+            
+            // Spirits from other sheets (cost per 70cl bottle)
+            "Beefeater 70cl": 13.35 / 700, // £0.0191
+            "Beefeater Pink 70cl": 13.35 / 700, // £0.0191
+            "Mermaid Gin 70cl": 27.99 / 700, // £0.0399
+            "Mermaid Gin 20cl": 13.99 / 200, // £0.06995
+            "Absolut Vodka 70cl": 13.35 / 700, // £0.0191
+            "Captain Morgans Spiced 70cl": 11.49 / 700, // £0.0164
+            "Aperol 70cl": 11.29 / 700, // £0.0161
+            "Tequila 70cl": 12.89 / 700, // £0.0184
+            "Vercchia Romagna 70cl": 22.39 / 700, // £0.032
+            "Courvoisier 70cl": 20.49 / 700, // £0.0293
+            "Jameson 70cl": 16.29 / 700, // £0.0233
+            "Jameson Black Barrel 70cl": 31.99 / 700, // £0.0457
+            "Glenlivet 70cl": 20.99 / 700, // £0.0299
+            "Tia Maria 70cl": 13.99 / 700, // £0.02
+            "Baileys 70cl": 10.79 / 700, // £0.0154
+            "Disaronno 70cl": 17.49 / 700, // £0.025
+            "Havana Rum 70cl": 15.99 / 700, // £0.0228
+            "Krohn Port 70cl": 13.64 / 700, // £0.0195
+        };
+
+        // DOM elements
+        const ingredientsContainer = document.getElementById('ingredients-container');
+        const addIngredientBtn = document.getElementById('add-ingredient-btn');
+        const totalCostElement = document.getElementById('total-cost');
+
+        // Function to create an ingredient row
+        function createIngredientRow() {
+            const ingredientDiv = document.createElement('div');
+            ingredientDiv.className = 'flex flex-col md:flex-row md:items-center gap-4 p-4 bg-gray-50 rounded-xl shadow-sm';
+
+            // Create ingredient select dropdown
+            const select = document.createElement('select');
+            select.className = 'w-full md:w-auto flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
+            select.innerHTML = '<option value="">-- Select an ingredient --</option>';
+            for (const ingredient in INGREDIENT_COSTS) {
+                const option = document.createElement('option');
+                option.value = ingredient;
+                option.textContent = ingredient;
+                select.appendChild(option);
+            }
+
+            // Create quantity input
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'number';
+            quantityInput.placeholder = 'Quantity (ml)';
+            quantityInput.min = 0;
+            quantityInput.className = 'w-full md:w-32 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+            // Create cost display
+            const costSpan = document.createElement('span');
+            costSpan.className = 'text-gray-700 font-semibold md:w-24 text-right';
+            costSpan.textContent = '£0.00';
+
+            // Create remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'text-gray-400 hover:text-red-500 transition-colors duration-200';
+            removeBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            `;
+            removeBtn.onclick = () => {
+                ingredientDiv.remove();
+                calculateTotalCost();
+            };
+
+            // Append elements to the row div
+            ingredientDiv.appendChild(select);
+            ingredientDiv.appendChild(quantityInput);
+            ingredientDiv.appendChild(costSpan);
+            ingredientDiv.appendChild(removeBtn);
+
+            // Add change listeners to update cost
+            const updateCost = () => {
+                const selectedIngredient = select.value;
+                const quantity = parseFloat(quantityInput.value);
+                let cost = 0;
+                if (selectedIngredient && !isNaN(quantity) && quantity > 0) {
+                    cost = INGREDIENT_COSTS[selectedIngredient] * quantity;
+                }
+                costSpan.textContent = `£${cost.toFixed(2)}`;
+                calculateTotalCost();
+            };
+
+            select.addEventListener('change', updateCost);
+            quantityInput.addEventListener('input', updateCost);
+
+            return ingredientDiv;
+        }
+
+        // Function to calculate and display the total cost
+        function calculateTotalCost() {
+            let total = 0;
+            const ingredientRows = ingredientsContainer.querySelectorAll('.flex');
+            ingredientRows.forEach(row => {
+                const select = row.querySelector('select');
+                const quantityInput = row.querySelector('input[type="number"]');
+
+                const selectedIngredient = select.value;
+                const quantity = parseFloat(quantityInput.value);
+
+                if (selectedIngredient && !isNaN(quantity) && quantity > 0) {
+                    total += INGREDIENT_COSTS[selectedIngredient] * quantity;
+                }
+            });
+            totalCostElement.textContent = `£${total.toFixed(2)}`;
+        }
+
+        // Event listener for the "Add Ingredient" button
+        addIngredientBtn.addEventListener('click', () => {
+            const newRow = createIngredientRow();
+            ingredientsContainer.appendChild(newRow);
+        });
+
+        // Add the first ingredient row on page load
+        window.onload = () => {
+            ingredientsContainer.appendChild(createIngredientRow());
+        };
+
+    </script>
+</body>
+</html>
+
